@@ -1,39 +1,50 @@
 const url = "https://boolean-spec-frontend.vercel.app/freetestapi";
 
+async function fetchJson(url) {
+    const response = await fetch(url);
+    const obj = await response.json()
+    return obj;
+}
+
 async function getDashboardData(query) {
 
     try {
 
-        const cityResponse = await fetch(`${url}/destinations?search=${query}`);
-        const city = cityResponse.json()
+        const destinationPromise = fetchJson(`${url}/destinations?search=${query}`);
+        const weatherPromise = fetchJson(`${url}/weathers?search=${query}`);
+        const airportPromise = fetchJson(`${url}/airports?search=${query}`);
 
-        const weatherResponse = await fetch(`${url}/weathers?search=${query}`);
-        const weather = weatherResponse.json()
-
-        const airportResponse = await fetch(`${url}/airports?search=${query}`);
-        const airport = airportResponse.json()
-
-        const [promise1, promise2, promise3] = await Promise.all([city, weather, airport])
+        const promises = [destinationPromise, weatherPromise, airportPromise] 
+        const [destination, weather, airport] = await Promise.all(promises)
 
         return {
-            city: promise1[0].name,
-            country: promise1[0].country,
-            temperature: promise2[0].temperature,
-            weather: promise2[0].weather_description,
-            airport: promise3[0].name
+            city: destination[0]?.name || null,
+            country: destination[0]?.country || null,
+            temperature: weather[0]?.temperature || null,
+            weather: weather[0]?.weather_description || null,
+            airport: airport[0]?.name || null
         }
     } catch (error) {
-        throw new Error(`Non riesco a recuperare i dati`)
+        throw new Error(`Non riesco a recuperare i dati: ${error.message}`)
     }
 }
 
-getDashboardData('london')
+getDashboardData('vienna')
     .then(data => {
         console.log("Dashboard data:", data);
-        console.log(
-            `${data.city} is in ${data.country}.\n` +
-            `Today there are ${data.temperature} degrees and the weather is ${data.weather}.\n` +
-            `The main airport is ${data.airport}.\n`
-        );
+        let message = "";
+
+        if (data.city && data.country) {
+            message += `${data.city} is in ${data.country}.\n`
+        }
+
+        if (data.temperature !== null && data.weather) {
+            message += `Today there are ${data.temperature} degrees and the weather is ${data.weather}.\n`
+        }
+
+        if (data.airport) {
+            message += `The main airport is ${data.airport}.\n`
+        }
+        console.log(message);
     })
     .catch(error => console.error("Errore:", error.message));
